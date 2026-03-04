@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
       page: params.get("page") ? parseInt(params.get("page")!) : undefined,
       limit: params.get("limit") ? parseInt(params.get("limit")!) : undefined,
       accountEmail: params.get("accountEmail") || undefined,
+      flagged: params.get("flagged") === "true" ? true : undefined,
     };
 
     const [result, statusCounts] = await Promise.all([

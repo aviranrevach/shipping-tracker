@@ -60,6 +60,30 @@ export const STATUS_DOT_COLORS: Record<ShipmentStatus, string> = {
   lost: "bg-gray-500",
 };
 
+// ── Flag reasons for review feedback ──
+export const FLAG_REASONS = [
+  "not_related",
+  "should_merge",
+  "unidentified_carrier",
+  "other",
+] as const;
+
+export type FlagReason = (typeof FLAG_REASONS)[number];
+
+export const FLAG_REASON_LABELS: Record<FlagReason, string> = {
+  not_related: "Not related to shipping",
+  should_merge: "Should merge with another item",
+  unidentified_carrier: "Unidentified carrier / parser issue",
+  other: "Other issue",
+};
+
+export const FLAG_REASON_DESCRIPTIONS: Record<FlagReason, string> = {
+  not_related: "This email has nothing to do with a shipment or order",
+  should_merge: "This email belongs to a different existing shipment",
+  unidentified_carrier: "Carrier not recognized, wrong status, or missing data",
+  other: "Custom issue — describe in notes",
+};
+
 export const STATUS_GROUPS: { label: string; statuses: ShipmentStatus[] }[] = [
   {
     label: "Arrived",

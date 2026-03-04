@@ -52,6 +52,11 @@ export const CARRIER_MAP: Record<string, CarrierInfo> = {
     trackingUrl: (n) =>
       `https://chitadelivery.co.il/en/?page_id=2794&tracking=${n}`,
   },
+  bar2go: {
+    name: "Bar2Go",
+    trackingUrl: (n) =>
+      `https://bar2go.co.il/sd/${n}`,
+  },
 };
 
 export function getCarrierInfo(

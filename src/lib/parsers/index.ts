@@ -3,6 +3,7 @@ import { amazonParser } from "./amazon";
 import { ebayParser } from "./ebay";
 import { aliexpressParser } from "./aliexpress";
 import { cheetahDeliveryParser } from "./cheetah-delivery";
+import { bar2goParser } from "./bar2go";
 import { israeliRetailersParser } from "./israeli-retailers";
 import { genericParser } from "./generic";
 
@@ -12,6 +13,7 @@ const parsers: EmailParser[] = [
   ebayParser,
   aliexpressParser,
   cheetahDeliveryParser,
+  bar2goParser,
   israeliRetailersParser,
   genericParser,
 ];

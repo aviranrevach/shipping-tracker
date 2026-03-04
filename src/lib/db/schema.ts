@@ -66,6 +66,10 @@ export const shipments = sqliteTable("shipments", {
 
   // Flags
   isManual: integer("is_manual", { mode: "boolean" }).default(false),
+  isFlagged: integer("is_flagged", { mode: "boolean" }).default(false),
+  flagReason: text("flag_reason"),
+  flagNotes: text("flag_notes"),
+  flaggedAt: text("flagged_at"),
 
   // Notes
   notes: text("notes"),

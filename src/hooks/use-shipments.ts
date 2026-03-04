@@ -8,6 +8,7 @@ interface UseShipmentsOptions {
   statuses?: ShipmentStatus[];
   search?: string;
   accountEmail?: string;
+  flagged?: boolean;
 }
 
 interface ShipmentsResponse {
@@ -32,6 +33,7 @@ export function useShipments(options: UseShipmentsOptions = {}) {
       if (options.statuses?.length) params.set("statuses", options.statuses.join(","));
       if (options.search) params.set("search", options.search);
       if (options.accountEmail) params.set("accountEmail", options.accountEmail);
+      if (options.flagged) params.set("flagged", "true");
 
       const res = await fetch(`/api/shipments?${params.toString()}`);
       if (res.ok) {
@@ -43,7 +45,7 @@ export function useShipments(options: UseShipmentsOptions = {}) {
     } finally {
       setIsLoading(false);
     }
-  }, [options.status, options.statuses?.join(","), options.search, options.accountEmail]);
+  }, [options.status, options.statuses?.join(","), options.search, options.accountEmail, options.flagged]);
 
   useEffect(() => {
     fetchShipments();

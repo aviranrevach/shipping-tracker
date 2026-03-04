@@ -13,10 +13,12 @@ interface LootTimelineProps {
   isLoading?: boolean;
   onStatusChange?: (id: number, status: string) => void;
   onSelect?: (id: number) => void;
+  onFlag?: (id: number) => void;
+  onUnflag?: (id: number) => void;
   filterKey?: string;
 }
 
-export function LootTimeline({ shipments, isLoading, onStatusChange, onSelect, filterKey }: LootTimelineProps) {
+export function LootTimeline({ shipments, isLoading, onStatusChange, onSelect, onFlag, onUnflag, filterKey }: LootTimelineProps) {
   const [collapsed, setCollapsed] = useState<Set<string>>(
     new Set(["delivered"])
   );
@@ -81,7 +83,7 @@ export function LootTimeline({ shipments, isLoading, onStatusChange, onSelect, f
             {!isCollapsed && (
               <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {group.shipments.map((s) => (
-                  <LootCard key={s.id} shipment={s} onStatusChange={onStatusChange} onSelect={onSelect} />
+                  <LootCard key={s.id} shipment={s} onStatusChange={onStatusChange} onSelect={onSelect} onFlag={onFlag} onUnflag={onUnflag} />
                 ))}
               </div>
             )}

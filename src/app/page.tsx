@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
-import { Filter, Gem, ClipboardList, Plus, Users } from "lucide-react";
+import Link from "next/link";
+import { Filter, Flag, Gem, ClipboardList, Plus, Users, ExternalLink } from "lucide-react";
+import { FlagDialog } from "@/components/shipment/flag-dialog";
+import { toast } from "sonner";
 import { SearchBar } from "@/components/dashboard/search-bar";
 import { ShipmentList } from "@/components/dashboard/shipment-list";
 import { LootTimeline } from "@/components/dashboard/loot-timeline";
@@ -59,6 +62,8 @@ export default function DashboardPage() {
   const [selectedShipmentId, setSelectedShipmentId] = useState<number | null>(null);
   const [accountFilter, setAccountFilter] = useState<string | undefined>();
   const [accounts, setAccounts] = useState<{ email: string }[]>([]);
+  const [flaggedFilter, setFlaggedFilter] = useState(false);
+  const [flaggingShipmentId, setFlaggingShipmentId] = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/auth/status")
@@ -72,10 +77,11 @@ export default function DashboardPage() {
     : undefined;
 
   const { shipments, total, statusCounts, isLoading, refetch } = useShipments({
-    statuses: activeStatuses as ShipmentStatus[] | undefined,
-    status: extraFilter,
+    statuses: flaggedFilter ? undefined : (activeStatuses as ShipmentStatus[] | undefined),
+    status: flaggedFilter ? undefined : extraFilter,
     search,
     accountEmail: accountFilter,
+    flagged: flaggedFilter || undefined,
   });
 
   const handleSearch = useCallback((value: string) => {
@@ -91,14 +97,36 @@ export default function DashboardPage() {
     refetch();
   }, [refetch]);
 
+  const handleUnflag = useCallback(async (id: number) => {
+    const res = await fetch(`/api/shipments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isFlagged: false, flagReason: null, flagNotes: null, flaggedAt: null }),
+    });
+    if (res.ok) {
+      toast.success("Flag removed");
+      refetch();
+    }
+  }, [refetch]);
+
   function toggleGroup(key: string) {
     setExtraFilter(undefined);
+    setFlaggedFilter(false);
     setActiveGroup(activeGroup === key ? undefined : key);
   }
 
   function toggleExtra(key: ShipmentStatus) {
     setActiveGroup(undefined);
+    setFlaggedFilter(false);
     setExtraFilter(extraFilter === key ? undefined : key);
+  }
+
+  function toggleFlagged() {
+    setFlaggedFilter(!flaggedFilter);
+    if (!flaggedFilter) {
+      setActiveGroup(undefined);
+      setExtraFilter(undefined);
+    }
   }
 
   return (
@@ -140,10 +168,10 @@ export default function DashboardPage() {
           <SearchBar value={search} onChange={handleSearch} />
         </div>
         <button
-          onClick={() => { setActiveGroup(undefined); setExtraFilter(undefined); }}
+          onClick={() => { setActiveGroup(undefined); setExtraFilter(undefined); setFlaggedFilter(false); }}
           className={cn(
             "inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-all cursor-pointer",
-            !activeGroup && !extraFilter
+            !activeGroup && !extraFilter && !flaggedFilter
               ? "bg-foreground text-background border-foreground"
               : "bg-muted text-muted-foreground border-muted"
           )}
@@ -166,6 +194,29 @@ export default function DashboardPage() {
             </button>
           );
         })}
+        {(statusCounts.flagged > 0 || flaggedFilter) && (
+          <button
+            onClick={toggleFlagged}
+            className={cn(
+              "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium whitespace-nowrap transition-all cursor-pointer",
+              flaggedFilter
+                ? "bg-amber-500 text-white border-amber-500"
+                : "bg-amber-50 text-amber-800 border-amber-200"
+            )}
+          >
+            <Flag className="h-3 w-3" />
+            Flagged: {statusCounts.flagged || 0}
+          </button>
+        )}
+        {statusCounts.flagged > 0 && (
+          <Link
+            href="/flagged"
+            className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-100 transition-colors"
+          >
+            Review
+            <ExternalLink className="h-2.5 w-2.5" />
+          </Link>
+        )}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
@@ -246,7 +297,7 @@ export default function DashboardPage() {
 
       {/* View */}
       {viewMode === "loot" ? (
-        <LootTimeline shipments={shipments} isLoading={isLoading} onStatusChange={handleStatusChange} onSelect={setSelectedShipmentId} filterKey={[activeGroup, extraFilter, search].filter(Boolean).join("|") || undefined} />
+        <LootTimeline shipments={shipments} isLoading={isLoading} onStatusChange={handleStatusChange} onSelect={setSelectedShipmentId} onFlag={setFlaggingShipmentId} onUnflag={handleUnflag} filterKey={[activeGroup, extraFilter, flaggedFilter ? "flagged" : "", search].filter(Boolean).join("|") || undefined} />
       ) : (
         <ShipmentList shipments={shipments} isLoading={isLoading} onSelect={setSelectedShipmentId} />
       )}
@@ -265,6 +316,18 @@ export default function DashboardPage() {
             setShowForm(false);
             refetch();
           }}
+        />
+      )}
+
+      {flaggingShipmentId !== null && (
+        <FlagDialog
+          open={true}
+          onClose={() => setFlaggingShipmentId(null)}
+          shipmentId={flaggingShipmentId}
+          shipmentName={shipments.find((s) => s.id === flaggingShipmentId)?.itemName || undefined}
+          currentReason={shipments.find((s) => s.id === flaggingShipmentId)?.flagReason}
+          currentNotes={shipments.find((s) => s.id === flaggingShipmentId)?.flagNotes}
+          onSuccess={refetch}
         />
       )}
 

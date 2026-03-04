@@ -27,6 +27,7 @@ export interface ShipmentFilters {
   page?: number;
   limit?: number;
   accountEmail?: string;
+  flagged?: boolean;
 }
 
 export async function getShipments(
@@ -42,6 +43,7 @@ export async function getShipments(
     page = 1,
     limit = 500,
     accountEmail,
+    flagged,
   } = filters;
 
   const conditions = [];
@@ -58,6 +60,10 @@ export async function getShipments(
 
   if (accountEmail) {
     conditions.push(eq(shipments.accountEmail, accountEmail));
+  }
+
+  if (flagged) {
+    conditions.push(eq(shipments.isFlagged, true));
   }
 
   if (search) {
@@ -162,6 +168,17 @@ export async function getStatusCounts(
     counts[row.status] = row.count;
     counts.all += row.count;
   }
+
+  // Flagged count
+  const [{ value: flaggedCount }] = await db
+    .select({ value: count() })
+    .from(shipments)
+    .where(
+      accountEmail
+        ? sql`${shipments.isFlagged} = 1 AND ${shipments.accountEmail} = ${accountEmail}`
+        : eq(shipments.isFlagged, true)
+    );
+  counts.flagged = flaggedCount;
 
   return counts;
 }

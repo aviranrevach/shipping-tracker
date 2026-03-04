@@ -7,7 +7,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { ChevronDown, PackageCheck, XCircle } from "lucide-react";
+import { ChevronDown, PackageCheck, XCircle, Flag, FlagOff } from "lucide-react";
+import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import type { ShipmentWithImages } from "@/types/shipment";
 import { STATUS_LABELS, STATUS_COLORS, STATUS_DOT_COLORS } from "@/types/shipment";
 
@@ -15,13 +16,15 @@ interface LootCardProps {
   shipment: ShipmentWithImages;
   onStatusChange?: (id: number, status: string) => void;
   onSelect?: (id: number) => void;
+  onFlag?: (id: number) => void;
+  onUnflag?: (id: number) => void;
 }
 
 function imageSrc(filePath: string) {
   return `/api/images/${filePath.replace(/^\.?\/?data\/images\//, "")}`;
 }
 
-export function LootCard({ shipment, onStatusChange, onSelect }: LootCardProps) {
+export function LootCard({ shipment, onStatusChange, onSelect, onFlag, onUnflag }: LootCardProps) {
   const images = shipment.images;
 
   return (
@@ -32,28 +35,35 @@ export function LootCard({ shipment, onStatusChange, onSelect }: LootCardProps) 
         onClick={() => onSelect?.(shipment.id)}
       >
         {/* Image */}
-        {images.length === 0 ? (
-          <div className="flex aspect-[11/10] items-center justify-center rounded-xl bg-muted text-muted-foreground text-2xl">
-            ?
-          </div>
-        ) : images.length === 1 ? (
-          <img
-            src={imageSrc(images[0].filePath)}
-            alt=""
-            className="aspect-[11/10] w-full rounded-xl object-cover"
-          />
-        ) : (
-          <div className="grid grid-cols-2 gap-1 aspect-[11/10] overflow-hidden">
-            {images.slice(0, 4).map((img) => (
-              <img
-                key={img.id}
-                src={imageSrc(img.filePath)}
-                alt=""
-                className="h-full w-full rounded-lg object-cover min-h-0"
-              />
-            ))}
-          </div>
-        )}
+        <div className="relative">
+          {images.length === 0 ? (
+            <div className="flex aspect-[11/10] items-center justify-center rounded-xl bg-muted text-muted-foreground text-2xl">
+              ?
+            </div>
+          ) : images.length === 1 ? (
+            <img
+              src={imageSrc(images[0].filePath)}
+              alt=""
+              className="aspect-[11/10] w-full rounded-xl object-cover"
+            />
+          ) : (
+            <div className="grid grid-cols-2 gap-1 aspect-[11/10] overflow-hidden">
+              {images.slice(0, 4).map((img) => (
+                <img
+                  key={img.id}
+                  src={imageSrc(img.filePath)}
+                  alt=""
+                  className="h-full w-full rounded-lg object-cover min-h-0"
+                />
+              ))}
+            </div>
+          )}
+          {shipment.isFlagged && (
+            <div className="absolute top-1.5 right-1.5 rounded-full bg-amber-500 p-1 shadow-sm">
+              <Flag className="h-3 w-3 text-white" />
+            </div>
+          )}
+        </div>
 
         {/* Status button — inside card, below image */}
         <DropdownMenu>
@@ -80,6 +90,17 @@ export function LootCard({ shipment, onStatusChange, onSelect }: LootCardProps) 
               <XCircle className="h-4 w-4 text-slate-400" />
               Cancelled
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem className="py-2" onClick={() => onFlag?.(shipment.id)}>
+              <Flag className="h-4 w-4 text-amber-500" />
+              {shipment.isFlagged ? "Edit Flag" : "Flag for Review"}
+            </DropdownMenuItem>
+            {shipment.isFlagged && (
+              <DropdownMenuItem className="py-2" onClick={() => onUnflag?.(shipment.id)}>
+                <FlagOff className="h-4 w-4 text-muted-foreground" />
+                Remove Flag
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       </div>

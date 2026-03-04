@@ -27,9 +27,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/shipment/status-badge";
 import { ShipmentTimeline } from "@/components/shipment/shipment-timeline";
 import { ShipmentForm } from "@/components/shipment/shipment-form";
-import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, type ShipmentWithImages } from "@/types/shipment";
+import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, FLAG_REASON_LABELS, type ShipmentWithImages, type FlagReason } from "@/types/shipment";
 import { cn } from "@/lib/utils";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Flag, FlagOff } from "lucide-react";
+import { FlagDialog } from "@/components/shipment/flag-dialog";
+import { toast } from "sonner";
 
 export default function ShipmentDetailPage() {
   const { id } = useParams();
@@ -43,6 +45,7 @@ export default function ShipmentDetailPage() {
   const [emailLoading, setEmailLoading] = useState(false);
   const [savingImage, setSavingImage] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [showFlagDialog, setShowFlagDialog] = useState(false);
 
   async function fetchShipment() {
     try {
@@ -78,6 +81,18 @@ export default function ShipmentDetailPage() {
     const res = await fetch(`/api/shipments/${id}`, { method: "DELETE" });
     if (res.ok) {
       router.push("/");
+    }
+  }
+
+  async function handleUnflag() {
+    const res = await fetch(`/api/shipments/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isFlagged: false, flagReason: null, flagNotes: null, flaggedAt: null }),
+    });
+    if (res.ok) {
+      toast.success("Flag removed");
+      fetchShipment();
     }
   }
 
@@ -185,6 +200,21 @@ export default function ShipmentDetailPage() {
         actualDelivery={shipment.actualDelivery}
         onStatusChange={(s) => handleStatusChange(s)}
       />
+
+      {/* Flagged banner */}
+      {shipment.isFlagged && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
+          <div className="flex items-center gap-2">
+            <Flag className="h-4 w-4 text-amber-600" />
+            <span className="text-sm font-medium text-amber-800">
+              Flagged: {FLAG_REASON_LABELS[shipment.flagReason as FlagReason] || shipment.flagReason || "Unknown"}
+            </span>
+          </div>
+          {shipment.flagNotes && (
+            <p className="text-sm text-amber-700 pl-6">{shipment.flagNotes}</p>
+          )}
+        </div>
+      )}
 
       {/* Main layout: image left, items + details right */}
       <div className="grid gap-8 md:grid-cols-[2fr_3fr]">
@@ -404,6 +434,18 @@ export default function ShipmentDetailPage() {
             <Button variant="outline" size="sm" onClick={() => setShowEdit(true)}>
               Edit
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => shipment.isFlagged ? handleUnflag() : setShowFlagDialog(true)}
+              className={shipment.isFlagged ? "border-amber-300 text-amber-700 hover:bg-amber-50" : ""}
+            >
+              {shipment.isFlagged ? (
+                <><FlagOff className="h-3.5 w-3.5 mr-1" /> Unflag</>
+              ) : (
+                <><Flag className="h-3.5 w-3.5 mr-1" /> Flag</>
+              )}
+            </Button>
             <Button variant="destructive" size="sm" onClick={handleDelete}>
               Delete
             </Button>
@@ -422,6 +464,18 @@ export default function ShipmentDetailPage() {
           initialData={
             shipment as unknown as Record<string, string | null>
           }
+        />
+      )}
+
+      {showFlagDialog && (
+        <FlagDialog
+          open={showFlagDialog}
+          onClose={() => setShowFlagDialog(false)}
+          shipmentId={shipment.id}
+          shipmentName={shipment.itemName || undefined}
+          currentReason={shipment.flagReason}
+          currentNotes={shipment.flagNotes}
+          onSuccess={fetchShipment}
         />
       )}
 

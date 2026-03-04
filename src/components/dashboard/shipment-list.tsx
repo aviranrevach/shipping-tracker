@@ -14,6 +14,7 @@ import {
   CircleDot,
   Undo2,
   HelpCircle,
+  Flag,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
@@ -187,7 +188,10 @@ export function ShipmentList({ shipments, isLoading, onSelect }: ShipmentListPro
               </div>
             )}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">{shipment.itemName || "Unknown Item"}</p>
+              <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                {shipment.itemName || "Unknown Item"}
+                {shipment.isFlagged && <Flag className="h-3 w-3 text-amber-500 flex-shrink-0" />}
+              </p>
               <div className="flex items-center gap-2 mt-1">
                 <StatusPill shipment={shipment} />
                 {shipment.retailer && (
@@ -208,7 +212,10 @@ export function ShipmentList({ shipments, isLoading, onSelect }: ShipmentListPro
           >
             <ItemImages shipment={shipment} />
             <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{shipment.itemName || "Unknown Item"}</p>
+              <p className="text-sm font-medium truncate flex items-center gap-1.5">
+                {shipment.itemName || "Unknown Item"}
+                {shipment.isFlagged && <Flag className="h-3 w-3 text-amber-500 flex-shrink-0" />}
+              </p>
               {shipment.orderNumber && (
                 <p className="text-xs text-muted-foreground truncate">#{shipment.orderNumber}</p>
               )}

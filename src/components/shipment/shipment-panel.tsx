@@ -7,8 +7,10 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShipmentTimeline } from "@/components/shipment/shipment-timeline";
 import { ShipmentForm } from "@/components/shipment/shipment-form";
-import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, type ShipmentWithImages } from "@/types/shipment";
-import { ArrowLeft, Check, ChevronLeft, ChevronRight, Ellipsis, ExternalLink, MailOpen, Pencil, Trash2, X } from "lucide-react";
+import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, FLAG_REASON_LABELS, type ShipmentWithImages, type FlagReason } from "@/types/shipment";
+import { ArrowLeft, Check, ChevronLeft, ChevronRight, Ellipsis, ExternalLink, Flag, FlagOff, MailOpen, Pencil, Trash2, X } from "lucide-react";
+import { FlagDialog } from "@/components/shipment/flag-dialog";
+import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -47,6 +49,7 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
   const [savingImage, setSavingImage] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [relatedEmails, setRelatedEmails] = useState<RelatedEmail[]>([]);
+  const [showFlagDialog, setShowFlagDialog] = useState(false);
 
   const fetchShipment = useCallback(async () => {
     if (!shipmentId) return;
@@ -108,6 +111,18 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
     if (res.ok) {
       onClose();
       onDeleted?.();
+    }
+  }
+
+  async function handleUnflag() {
+    const res = await fetch(`/api/shipments/${shipmentId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ isFlagged: false, flagReason: null, flagNotes: null, flaggedAt: null }),
+    });
+    if (res.ok) {
+      toast.success("Flag removed");
+      fetchShipment();
     }
   }
 
@@ -243,6 +258,20 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
               )}
             </div>
             <div className="flex items-center shrink-0">
+              {shipment && (
+                <button
+                  onClick={() => shipment.isFlagged ? handleUnflag() : setShowFlagDialog(true)}
+                  className={cn(
+                    "rounded-md p-2 transition-colors",
+                    shipment.isFlagged
+                      ? "text-amber-500 bg-amber-50"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                  title={shipment.isFlagged ? "Flagged — click to remove" : "Flag for review"}
+                >
+                  <Flag className="h-4 w-4" />
+                </button>
+              )}
               {(relatedEmails.length > 0 || shipment?.emailId) ? (
                 <button
                   onClick={() => showEmailView ? setShowEmailView(false) : openEmailView()}
@@ -281,6 +310,17 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
                       <Pencil className="h-4 w-4" />
                       Edit
                     </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setShowFlagDialog(true)}>
+                      <Flag className="h-4 w-4 text-amber-500" />
+                      {shipment.isFlagged ? "Edit Flag" : "Flag for Review"}
+                    </DropdownMenuItem>
+                    {shipment.isFlagged && (
+                      <DropdownMenuItem onClick={handleUnflag}>
+                        <FlagOff className="h-4 w-4 text-muted-foreground" />
+                        Remove Flag
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuSeparator />
                     <DropdownMenuItem variant="destructive" onClick={handleDelete}>
                       <Trash2 className="h-4 w-4" />
@@ -488,6 +528,21 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
                     onStatusChange={(s) => handleStatusChange(s)}
                   />
 
+                  {/* Flagged banner */}
+                  {shipment.isFlagged && (
+                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Flag className="h-4 w-4 text-amber-600" />
+                        <span className="text-sm font-medium text-amber-800">
+                          Flagged: {FLAG_REASON_LABELS[shipment.flagReason as FlagReason] || shipment.flagReason || "Unknown"}
+                        </span>
+                      </div>
+                      {shipment.flagNotes && (
+                        <p className="text-sm text-amber-700 pl-6">{shipment.flagNotes}</p>
+                      )}
+                    </div>
+                  )}
+
                   {/* Main layout: items left, image right */}
                   <div className="grid gap-8 grid-cols-1 md:grid-cols-[3fr_2fr]">
                     {/* Left: Item list + details */}
@@ -676,6 +731,21 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
               fetchShipment();
             }}
             initialData={shipment as unknown as Record<string, string | null>}
+          />
+        )}
+
+        {showFlagDialog && shipment && (
+          <FlagDialog
+            open={showFlagDialog}
+            onClose={() => setShowFlagDialog(false)}
+            shipmentId={shipment.id}
+            shipmentName={shipment.itemName || undefined}
+            currentReason={shipment.flagReason}
+            currentNotes={shipment.flagNotes}
+            onSuccess={() => {
+              fetchShipment();
+              window.dispatchEvent(new Event("shipments-updated"));
+            }}
           />
         )}
       </div>
