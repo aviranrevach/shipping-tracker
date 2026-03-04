@@ -27,7 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { StatusBadge } from "@/components/shipment/status-badge";
 import { ShipmentTimeline } from "@/components/shipment/shipment-timeline";
 import { ShipmentForm } from "@/components/shipment/shipment-form";
-import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, FLAG_REASON_LABELS, type ShipmentWithImages, type FlagReason } from "@/types/shipment";
+import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, FLAG_REASON_LABELS, parseFlagReasons, type ShipmentWithImages, type FlagReason } from "@/types/shipment";
 import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, Flag, FlagOff } from "lucide-react";
 import { FlagDialog } from "@/components/shipment/flag-dialog";
@@ -204,11 +204,14 @@ export default function ShipmentDetailPage() {
       {/* Flagged banner */}
       {shipment.isFlagged && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Flag className="h-4 w-4 text-amber-600" />
-            <span className="text-sm font-medium text-amber-800">
-              Flagged: {FLAG_REASON_LABELS[shipment.flagReason as FlagReason] || shipment.flagReason || "Unknown"}
-            </span>
+            <span className="text-sm font-medium text-amber-800">Flagged:</span>
+            {parseFlagReasons(shipment.flagReason).map((r) => (
+              <span key={r} className="text-xs bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full text-amber-800">
+                {FLAG_REASON_LABELS[r]}
+              </span>
+            ))}
           </div>
           {shipment.flagNotes && (
             <p className="text-sm text-amber-700 pl-6">{shipment.flagNotes}</p>

@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ShipmentTimeline } from "@/components/shipment/shipment-timeline";
 import { ShipmentForm } from "@/components/shipment/shipment-form";
-import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, FLAG_REASON_LABELS, type ShipmentWithImages, type FlagReason } from "@/types/shipment";
+import { STATUS_LABELS, STATUS_DOT_COLORS, STATUS_GROUPS, FLAG_REASON_LABELS, parseFlagReasons, type ShipmentWithImages, type FlagReason } from "@/types/shipment";
 import { ArrowLeft, Check, ChevronLeft, ChevronRight, Ellipsis, ExternalLink, Flag, FlagOff, MailOpen, Pencil, Trash2, X } from "lucide-react";
 import { FlagDialog } from "@/components/shipment/flag-dialog";
 import { toast } from "sonner";
@@ -29,6 +29,10 @@ interface RelatedEmail {
   fromAddress: string | null;
   receivedAt: string | null;
   parserUsed: string | null;
+  isFlagged: boolean | null;
+  flagReason: string | null;
+  flagNotes: string | null;
+  flaggedAt: string | null;
 }
 
 interface ShipmentPanelProps {
@@ -50,6 +54,7 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [relatedEmails, setRelatedEmails] = useState<RelatedEmail[]>([]);
   const [showFlagDialog, setShowFlagDialog] = useState(false);
+  const [emailFlagTarget, setEmailFlagTarget] = useState<RelatedEmail | null>(null);
 
   const fetchShipment = useCallback(async () => {
     if (!shipmentId) return;
@@ -398,21 +403,40 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
                           key={email.gmailMessageId}
                           onClick={() => selectEmail(index)}
                           className={cn(
-                            "px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40",
+                            "px-4 py-3 cursor-pointer transition-colors hover:bg-muted/40 group relative",
                             index === selectedEmailIndex && "bg-muted/60"
                           )}
                         >
-                          <p className="text-sm font-medium truncate">
-                            {email.subject || "No subject"}
-                          </p>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {email.fromAddress || "Unknown sender"}
-                          </p>
-                          {email.receivedAt && (
-                            <p className="text-[11px] text-muted-foreground/70 mt-1">
-                              {format(new Date(email.receivedAt), "MMM d, yyyy · h:mm a")}
-                            </p>
-                          )}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">
+                                {email.subject || "No subject"}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {email.fromAddress || "Unknown sender"}
+                              </p>
+                              {email.receivedAt && (
+                                <p className="text-[11px] text-muted-foreground/70 mt-1">
+                                  {format(new Date(email.receivedAt), "MMM d, yyyy · h:mm a")}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEmailFlagTarget(email);
+                              }}
+                              className={cn(
+                                "shrink-0 p-1 rounded transition-all",
+                                email.isFlagged
+                                  ? "text-amber-500"
+                                  : "text-muted-foreground/40 opacity-0 group-hover:opacity-100"
+                              )}
+                              title={email.isFlagged ? "Edit email flag" : "Flag email"}
+                            >
+                              <Flag className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -531,11 +555,14 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
                   {/* Flagged banner */}
                   {shipment.isFlagged && (
                     <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <Flag className="h-4 w-4 text-amber-600" />
-                        <span className="text-sm font-medium text-amber-800">
-                          Flagged: {FLAG_REASON_LABELS[shipment.flagReason as FlagReason] || shipment.flagReason || "Unknown"}
-                        </span>
+                        <span className="text-sm font-medium text-amber-800">Flagged:</span>
+                        {parseFlagReasons(shipment.flagReason).map((r) => (
+                          <span key={r} className="text-xs bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded-full text-amber-800">
+                            {FLAG_REASON_LABELS[r]}
+                          </span>
+                        ))}
                       </div>
                       {shipment.flagNotes && (
                         <p className="text-sm text-amber-700 pl-6">{shipment.flagNotes}</p>
@@ -744,6 +771,24 @@ export function ShipmentPanel({ shipmentId, onClose, onDeleted }: ShipmentPanelP
             currentNotes={shipment.flagNotes}
             onSuccess={() => {
               fetchShipment();
+              window.dispatchEvent(new Event("shipments-updated"));
+            }}
+          />
+        )}
+
+        {emailFlagTarget && shipment && (
+          <FlagDialog
+            open
+            onClose={() => setEmailFlagTarget(null)}
+            shipmentId={shipment.id}
+            mode="email"
+            emailId={emailFlagTarget.gmailMessageId}
+            emailSubject={emailFlagTarget.subject || undefined}
+            currentReason={emailFlagTarget.flagReason}
+            currentNotes={emailFlagTarget.flagNotes}
+            onSuccess={() => {
+              setEmailFlagTarget(null);
+              fetchEmails();
               window.dispatchEvent(new Event("shipments-updated"));
             }}
           />

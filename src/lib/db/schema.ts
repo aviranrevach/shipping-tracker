@@ -126,6 +126,12 @@ export const emailSync = sqliteTable("email_sync", {
   errorMessage: text("error_message"),
   shipmentId: integer("shipment_id").references(() => shipments.id),
   accountEmail: text("account_email"),
+
+  // Flags (email-level)
+  isFlagged: integer("is_flagged", { mode: "boolean" }).default(false),
+  flagReason: text("flag_reason"),
+  flagNotes: text("flag_notes"),
+  flaggedAt: text("flagged_at"),
 });
 
 // ──────────────────────────────────────────────────

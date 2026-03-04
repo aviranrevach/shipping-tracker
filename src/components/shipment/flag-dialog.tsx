@@ -9,14 +9,15 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { FLAG_REASONS, FLAG_REASON_LABELS, FLAG_REASON_DESCRIPTIONS, type FlagReason } from "@/types/shipment";
+  FLAG_REASONS,
+  FLAG_REASON_LABELS,
+  FLAG_REASON_DESCRIPTIONS,
+  parseFlagReasons,
+  serializeFlagReasons,
+  type FlagReason,
+} from "@/types/shipment";
 import { toast } from "sonner";
 
 interface FlagDialogProps {
@@ -27,6 +28,9 @@ interface FlagDialogProps {
   currentReason?: string | null;
   currentNotes?: string | null;
   onSuccess: () => void;
+  mode?: "shipment" | "email";
+  emailId?: string;
+  emailSubject?: string;
 }
 
 export function FlagDialog({
@@ -37,87 +41,123 @@ export function FlagDialog({
   currentReason,
   currentNotes,
   onSuccess,
+  mode = "shipment",
+  emailId,
+  emailSubject,
 }: FlagDialogProps) {
-  const [reason, setReason] = useState<FlagReason | "">(
-    (currentReason as FlagReason) || ""
+  const [reasons, setReasons] = useState<FlagReason[]>(
+    parseFlagReasons(currentReason ?? null)
   );
   const [notes, setNotes] = useState(currentNotes || "");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  function toggleReason(r: FlagReason) {
+    setReasons((prev) =>
+      prev.includes(r) ? prev.filter((x) => x !== r) : [...prev, r]
+    );
+  }
+
   async function handleSubmit() {
-    if (!reason) return;
+    if (reasons.length === 0) return;
     setIsSubmitting(true);
     try {
-      const res = await fetch(`/api/shipments/${shipmentId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          isFlagged: true,
-          flagReason: reason,
-          flagNotes: notes.trim() || null,
-          flaggedAt: new Date().toISOString(),
-        }),
-      });
+      let res: Response;
+
+      if (mode === "email" && emailId) {
+        res = await fetch(`/api/emails/${emailId}/flag`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            isFlagged: true,
+            flagReason: serializeFlagReasons(reasons),
+            flagNotes: notes.trim() || null,
+          }),
+        });
+      } else {
+        res = await fetch(`/api/shipments/${shipmentId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            isFlagged: true,
+            flagReason: serializeFlagReasons(reasons),
+            flagNotes: notes.trim() || null,
+            flaggedAt: new Date().toISOString(),
+          }),
+        });
+      }
+
       if (res.ok) {
-        toast.success("Shipment flagged for review");
+        toast.success(
+          mode === "email" ? "Email flagged for review" : "Shipment flagged for review"
+        );
         onSuccess();
         onClose();
       } else {
-        toast.error("Failed to flag shipment");
+        toast.error("Failed to flag");
       }
     } catch {
-      toast.error("Failed to flag shipment");
+      toast.error("Failed to flag");
     } finally {
       setIsSubmitting(false);
     }
   }
 
+  const displayName = mode === "email" ? emailSubject : shipmentName;
+  const notesRequired = reasons.includes("other");
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Flag for Review</DialogTitle>
-          {shipmentName && (
+          <DialogTitle>
+            {mode === "email" ? "Flag Email for Review" : "Flag for Review"}
+          </DialogTitle>
+          {displayName && (
             <DialogDescription className="truncate">
-              {shipmentName}
+              {displayName}
             </DialogDescription>
           )}
         </DialogHeader>
         <div className="space-y-4">
           <div>
-            <label className="text-sm font-medium">Reason *</label>
-            <Select value={reason} onValueChange={(v) => setReason(v as FlagReason)}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select a reason..." />
-              </SelectTrigger>
-              <SelectContent>
-                {FLAG_REASONS.map((r) => (
-                  <SelectItem key={r} value={r}>
-                    {FLAG_REASON_LABELS[r]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {reason && (
-              <p className="mt-1.5 text-xs text-muted-foreground">
-                {FLAG_REASON_DESCRIPTIONS[reason]}
-              </p>
-            )}
+            <label className="text-sm font-medium">Reasons *</label>
+            <div className="mt-2 space-y-1">
+              {FLAG_REASONS.map((r) => (
+                <label
+                  key={r}
+                  className="flex items-start gap-3 rounded-md px-2 py-2 cursor-pointer hover:bg-muted/50 transition-colors"
+                >
+                  <Checkbox
+                    checked={reasons.includes(r)}
+                    onCheckedChange={() => toggleReason(r)}
+                    className="mt-0.5"
+                  />
+                  <div className="min-w-0">
+                    <span className="text-sm font-medium">
+                      {FLAG_REASON_LABELS[r]}
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      {FLAG_REASON_DESCRIPTIONS[r]}
+                    </p>
+                  </div>
+                </label>
+              ))}
+            </div>
           </div>
           <div>
             <label className="text-sm font-medium">
-              Notes {reason === "other" ? "*" : "(optional)"}
+              Notes {notesRequired ? "*" : "(optional)"}
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={3}
               placeholder={
-                reason === "should_merge"
+                reasons.includes("should_merge")
                   ? "Which shipment should this merge with?"
-                  : reason === "unidentified_carrier"
+                  : reasons.includes("unidentified_carrier")
                     ? "What carrier is it? What was wrong?"
-                    : reason === "other"
+                    : reasons.includes("other")
                       ? "Describe the issue..."
                       : "Any additional details?"
               }
@@ -130,7 +170,11 @@ export function FlagDialog({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={!reason || (reason === "other" && !notes.trim()) || isSubmitting}
+              disabled={
+                reasons.length === 0 ||
+                (notesRequired && !notes.trim()) ||
+                isSubmitting
+              }
             >
               {isSubmitting ? "Flagging..." : "Flag"}
             </Button>

@@ -18,6 +18,10 @@ export async function GET(
         fromAddress: emailSync.fromAddress,
         receivedAt: emailSync.receivedAt,
         parserUsed: emailSync.parserUsed,
+        isFlagged: emailSync.isFlagged,
+        flagReason: emailSync.flagReason,
+        flagNotes: emailSync.flagNotes,
+        flaggedAt: emailSync.flaggedAt,
       })
       .from(emailSync)
       .where(

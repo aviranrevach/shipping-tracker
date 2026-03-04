@@ -84,6 +84,23 @@ export const FLAG_REASON_DESCRIPTIONS: Record<FlagReason, string> = {
   other: "Custom issue — describe in notes",
 };
 
+// ── Multi-select helpers (backward-compatible with old single-string values) ──
+export function parseFlagReasons(raw: string | null): FlagReason[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed as FlagReason[];
+  } catch {
+    // Legacy single-string value
+    if (FLAG_REASONS.includes(raw as FlagReason)) return [raw as FlagReason];
+  }
+  return [];
+}
+
+export function serializeFlagReasons(reasons: FlagReason[]): string {
+  return JSON.stringify(reasons);
+}
+
 export const STATUS_GROUPS: { label: string; statuses: ShipmentStatus[] }[] = [
   {
     label: "Arrived",

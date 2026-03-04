@@ -79,7 +79,11 @@ export async function migrateGmailAccountsSchema(): Promise<void> {
       result_status TEXT NOT NULL,
       error_message TEXT,
       shipment_id INTEGER REFERENCES shipments(id),
-      account_email TEXT
+      account_email TEXT,
+      is_flagged INTEGER DEFAULT 0,
+      flag_reason TEXT,
+      flag_notes TEXT,
+      flagged_at TEXT
     )
   `);
 
@@ -139,6 +143,31 @@ export async function migrateGmailAccountsSchema(): Promise<void> {
 
   try {
     await db.run(sql`ALTER TABLE shipments ADD COLUMN flagged_at TEXT`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  // Email-level flagging columns
+  try {
+    await db.run(sql`ALTER TABLE email_sync ADD COLUMN is_flagged INTEGER DEFAULT 0`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  try {
+    await db.run(sql`ALTER TABLE email_sync ADD COLUMN flag_reason TEXT`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  try {
+    await db.run(sql`ALTER TABLE email_sync ADD COLUMN flag_notes TEXT`);
+  } catch {
+    // Column already exists — ignore
+  }
+
+  try {
+    await db.run(sql`ALTER TABLE email_sync ADD COLUMN flagged_at TEXT`);
   } catch {
     // Column already exists — ignore
   }
