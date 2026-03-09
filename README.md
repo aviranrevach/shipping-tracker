@@ -1,8 +1,14 @@
 # LootBox
 
+> **Work in progress** — actively being developed. Features may change, break, or disappear.
+
 **Your shipments, unboxed.** A self-hosted shipping dashboard that scans your Gmail, extracts tracking info, and gives you one clean view of everything headed your way.
 
 No more digging through emails. No more "did I already order that?" Just open LootBox and see what's coming.
+
+<p align="center">
+  <img src="docs/lootbox.png" alt="LootBox Dashboard" width="800" />
+</p>
 
 ---
 
